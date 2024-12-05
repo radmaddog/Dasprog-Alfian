@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Cerdas Untuk Anak Kos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+            background-color: #f2f2f2;
+        }
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h3 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        input, button {
+            padding: 10px;
+            margin-top: 5px;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        input:focus {
+            border-color: #007BFF;
+            outline: none;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+        }
+        .button-group button {
+            width: 48%;
+        }
+        @media (max-width: 600px) {
+            .button-group {
+                flex-direction: column;
+            }
+            .button-group button {
+                width: 100%;
+                margin-top: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kalkulator Cerdas Untuk Anak Kos</h1>
+        <form id="listrikForm">
+            <label for="tarif">Tarif listrik per kWh (IDR):</label>
+            <input type="number" id="tarif" placeholder="Masukkan tarif listrik (contoh: 1500)" required min="0">
+    
+            <label for="kwh">Total kWh token listrik:</label>
+            <input type="number" id="kwh" placeholder="Masukkan total kWh (contoh: 50)" required min="0">
+    
+            <label for="jumlahBarang">Jumlah barang elektronik:</label>
+            <input type="number" id="jumlahBarang" placeholder="Masukkan jumlah barang elektronik" required min="1">
+    
+            <div id="barangInput"></div>
+    
+            <button type="button" onclick="hitungBiaya()">Hitung Biaya Listrik</button>
+        </form>
+
+        <div class="result" id="hasil" style="display:none;"></div>
+        <div class="result" id="databaseSection" style="display:none;">
+            <div id="databaseBarang"></div>
+            <div class="button-group">
+                <button type="button" onclick="hitungUlang()">Hitung Ulang</button>
+                <button type="button" onclick="selesai()">Selesai</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let database = []; // Database sementara
+        const barangInput = document.getElementById('barangInput');
+        const hasil = document.getElementById('hasil');
+        const databaseSection = document.getElementById('databaseSection');
+        const databaseDiv = document.getElementById('databaseBarang');
+        const listrikForm = document.getElementById('listrikForm');
+
+        // Tambahkan input untuk barang elektronik secara dinamis
+        document.getElementById('jumlahBarang').addEventListener('input', function () {
+            barangInput.innerHTML = ''; // Hapus input sebelumnya
+            const jumlah = parseInt(this.value);
+            if (jumlah > 0) {
+                for (let i = 1; i <= jumlah; i++) {
+                    barangInput.innerHTML += `
+                        <label for="barang${i}">Nama barang ${i}:</label>
+                        <input type="text" id="barang${i}" placeholder="Nama barang ${i}" required>
+    
+                        <label for="watt${i}">Watt barang ${i}:</label>
+                        <input type="number" id="watt${i}" placeholder="Watt barang ${i}" required min="0">
+    
+                        <label for="jam${i}">Jam penggunaan barang ${i}:</label>
+                        <input type="number" id="jam${i}" placeholder="Jam penggunaan barang ${i} per hari" required min="0" max="24">
+                    `;
+                }
+            }
+        });
+
+        // Simpan data ke dalam database sementara
+        function simpanData() {
+            database = []; // Reset database
+            const jumlahBarang = parseInt(document.getElementById('jumlahBarang').value);
+
+            for (let i = 1; i <= jumlahBarang; i++) {
+                const barang = document.getElementById(`barang${i}`).value.trim();
+                const watt = parseFloat(document.getElementById(`watt${i}`).value);
+                const jam = parseFloat(document.getElementById(`jam${i}`).value);
+
+                database.push({
+                    nama: barang,
+                    watt: watt,
+                    jam: jam,
+                });
+            }
+        }
+
+        // Tampilkan daftar barang elektronik
+        function tampilkanDatabase() {
+            databaseDiv.innerHTML = '<h3>Daftar Barang Elektronik:</h3>';
+            database.forEach((item, index) => {
+                databaseDiv.innerHTML += `
+                    <p>${index + 1}. ${item.nama} - ${item.watt} watt, ${item.jam} jam/hari</p>
+                `;
+            });
+        }
+
+        // Tampilkan hasil perhitungan
+        function tampilkanHasil(totalKWh, totalBiaya) {
+            hasil.innerHTML = `
+                <p><strong>Total penggunaan kWh per bulan:</strong> ${totalKWh.toFixed(2)} kWh</p>
+                <p><strong>Total biaya listrik:</strong> IDR ${totalBiaya.toLocaleString('id-ID')}</p>
+                <p>${saranPenghematan(totalBiaya)}</p>
+            `;
+            hasil.style.display = 'block';
+            tampilkanDatabase();
+            databaseSection.style.display = 'block';
+        }
+
+        // Fungsi utama untuk menghitung biaya listrik
+        function hitungBiaya() {
+            const tarifPerKWh = parseFloat(document.getElementById('tarif').value);
+            const kWh = parseFloat(document.getElementById('kwh').value);
+            const jumlahBarang = parseInt(document.getElementById('jumlahBarang').value);
+
+            // Validasi input awal
+            if (isNaN(tarifPerKWh) || isNaN(kWh) || isNaN(jumlahBarang) || jumlahBarang <= 0) {
+                alert('Harap masukkan semua input dengan benar.');
+                return;
+            }
+
+            // Validasi dan simpan data barang elektronik
+            for (let i = 1; i <= jumlahBarang; i++) {
+                const nama = document.getElementById(`barang${i}`).value.trim();
+                const watt = parseFloat(document.getElementById(`watt${i}`).value);
+                const jam = parseFloat(document.getElementById(`jam${i}`).value);
+
+                if (nama === '' || isNaN(watt) || isNaN(jam) || watt < 0 || jam < 0 || jam > 24) {
+                    alert('Harap masukkan nama barang, watt, dan jam penggunaan dengan benar (jam maksimal 24).');
+                    return;
+                }
+            }
+
+            simpanData(); // Simpan data ke dalam database
+
+            let totalWatt = 0;
+            database.forEach(item => {
+                totalWatt += item.watt * item.jam;
+            });
+
+            const totalKWh = (totalWatt / 1000) * 30; // Menghitung kWh bulanan (asumsi 30 hari)
+            const totalBiaya = totalKWh * tarifPerKWh;
+
+            tampilkanHasil(totalKWh, totalBiaya);
+        }
+
+        // Fungsi untuk menghitung ulang
+        function hitungUlang() {
+            const konfirmasi = confirm('Apakah Anda ingin menghitung ulang?');
+            if (konfirmasi) {
+                // Kembali ke input awal
+                resetForm();
+            }
+        }
+
+        // Fungsi untuk menyelesaikan dan menyembunyikan database
+        function selesai() {
+            alert('Perhitungan selesai. Data telah disimpan sementara.');
+            databaseSection.style.display = 'none';
+            hasil.style.display = 'none';
+        }
+
+        // Reset form untuk perhitungan ulang
+        function resetForm() {
+            listrikForm.reset();
+            barangInput.innerHTML = '';
+            hasil.style.display = 'none';
+            databaseSection.style.display = 'none';
+            database = []; // Reset database
+        }
+
+        // Memberikan saran penghematan
+        function saranPenghematan(totalBiaya) {
+            let rekomendasi = '';
+
+            if (totalBiaya > 50000) {
+                rekomendasi += 'Total biaya Anda sudah tinggi. Berikut beberapa tips penghematan:<br>';
+            } else if (totalBiaya > 30000) {
+                rekomendasi += 'Biaya Anda masih dalam batas wajar. Namun, Anda bisa menghemat lebih banyak dengan tips ini:<br>';
+            } else {
+                rekomendasi += 'Anda sudah hemat, mantap bos! Namun, ini beberapa tips tambahan:<br>';
+            }
+
+            database.forEach(item => {
+                rekomendasi += `- Kurangi waktu penggunaan ${item.nama} (${item.jam} jam/hari) atau ganti dengan versi hemat energi.<br>`;
+            });
+
+            rekomendasi += '<br>Tips umum:<br>';
+            rekomendasi += '- Gunakan barang elektronik hanya saat diperlukan.<br>';
+            rekomendasi += '- Matikan alat elektronik yang tidak digunakan.<br>';
+            rekomendasi += '- Pertimbangkan untuk menggunakan barang dengan label hemat energi (misalnya LED, inverter, dll).<br>';
+
+            return rekomendasi;
+        }
+    </script>
+</body>
+</html>
